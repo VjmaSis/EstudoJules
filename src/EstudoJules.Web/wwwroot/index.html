@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EstudoJules - Cadastro de Pessoas</title>
+    <base href="/" />
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
+    <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
+    <!-- Se você tiver um arquivo CSS customizado, adicione aqui -->
+    <!-- <link href="css/app.css" rel="stylesheet" /> -->
+    <!-- Manifest PWA -->
+    <!-- <link href="manifest.json" rel="manifest" /> -->
+    <!-- <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png" /> -->
+    <!-- <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png" /> -->
+</head>
+
+<body>
+    <div id="app">
+        <!-- Estilizando o loading -->
+        <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);">
+            <p>Carregando...</p>
+            <!-- Você pode adicionar um spinner ou animação aqui -->
+        </div>
+    </div>
+
+    <div id="blazor-error-ui">
+        Ocorreu um erro inesperado.
+        <a href="" class="reload">Recarregar</a>
+        <a class="dismiss">🗙</a>
+    </div>
+    <script src="_framework/blazor.webassembly.js"></script>
+    <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+    <!-- PWA Service Worker -->
+    <!-- <script>navigator.serviceWorker.register('service-worker.js');</script> -->
+</body>
+
+</html>

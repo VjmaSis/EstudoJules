@@ -1,0 +1,139 @@
+@page "/pessoas"
+@inject EstudoJules.Web.Services.IPessoaApiService PessoaApiService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+@using EstudoJules.Application.Interfaces // Para PessoaDto
+@using MudBlazor
+
+<h3>Lista de Pessoas</h3>
+
+@if (pessoas == null)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else if (!pessoas.Any())
+{
+    <MudText>Nenhuma pessoa cadastrada.</MudText>
+}
+else
+{
+    <MudTable Items="@pessoas" Hover="true" Striped="true" Dense="true" Class="mt-4">
+        <HeaderContent>
+            <MudTh>Nome</MudTh>
+            <MudTh>Data de Nascimento</MudTh>
+            <MudTh>Email</MudTh>
+            <MudTh>CPF</MudTh>
+            <MudTh>Ações</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Nome">@context.Nome</MudTd>
+            <MudTd DataLabel="Data de Nascimento">@context.DataNascimento.ToShortDateString()</MudTd>
+            <MudTd DataLabel="Email">@context.Email</MudTd>
+            <MudTd DataLabel="CPF">@context.Cpf</MudTd>
+            <MudTd DataLabel="Ações">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => EditarPessoa(context.Id))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => ConfirmarExclusao(context.Id, context.Nome))" />
+            </MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager />
+        </PagerContent>
+    </MudTable>
+}
+
+<MudFab Color="Color.Primary" Icon="@Icons.Material.Filled.Add" OnClick="@(() => NavigationManager.NavigateTo("/pessoas/nova"))" Class="mt-4" Label="Nova Pessoa"/>
+
+@code {
+    private IEnumerable<PessoaDto>? pessoas;
+    private Guid pessoaIdParaExcluir;
+    private string? nomePessoaParaExcluir;
+    private bool exibirDialogoConfirmacao = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarPessoas();
+    }
+
+    private async Task CarregarPessoas()
+    {
+        try
+        {
+            pessoas = await PessoaApiService.ObterTodosAsync();
+            if (pessoas == null)
+            {
+                Snackbar.Add("Não foi possível carregar a lista de pessoas.", Severity.Error);
+                pessoas = new List<PessoaDto>(); // Evita null reference na UI
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao carregar pessoas: {ex.Message}", Severity.Error);
+            pessoas = new List<PessoaDto>(); // Evita null reference na UI
+        }
+    }
+
+    private void EditarPessoa(Guid id)
+    {
+        NavigationManager.NavigateTo($"/pessoas/editar/{id}");
+    }
+
+    private void ConfirmarExclusao(Guid id, string nome)
+    {
+        pessoaIdParaExcluir = id;
+        nomePessoaParaExcluir = nome;
+        // Aqui você pode usar um componente de diálogo do MudBlazor para confirmação
+        // Por simplicidade, vamos chamar o método de exclusão diretamente ou usar um confirm do JS
+        // Em um app real, um diálogo MudDialog seria melhor.
+        // Exemplo: _dialogService.Show<ConfirmDeleteDialog>("Confirmar Exclusão", parameters);
+        // Por ora, vamos simular a confirmação e chamar ExcluirPessoa diretamente.
+        // Para uma melhor UX, um diálogo é essencial.
+        // Vamos adicionar um diálogo simples usando uma variável de estado.
+        exibirDialogoConfirmacao = true;
+        StateHasChanged(); // Força a UI a re-renderizar para mostrar o diálogo (se implementado no HTML)
+                           // Como não temos um diálogo no HTML ainda, vamos chamar diretamente para fins de teste
+                           // await ExcluirPessoa(id); // Removido para implementar um diálogo simples
+    }
+
+    private async Task ExcluirPessoaConfirmado()
+    {
+        exibirDialogoConfirmacao = false;
+        try
+        {
+            var sucesso = await PessoaApiService.RemoverAsync(pessoaIdParaExcluir);
+            if (sucesso)
+            {
+                Snackbar.Add("Pessoa excluída com sucesso!", Severity.Success);
+                await CarregarPessoas(); // Recarrega a lista
+            }
+            else
+            {
+                Snackbar.Add("Erro ao excluir pessoa.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao excluir pessoa: {ex.Message}", Severity.Error);
+        }
+        StateHasChanged();
+    }
+
+    private void CancelarExclusao()
+    {
+        exibirDialogoConfirmacao = false;
+        StateHasChanged();
+    }
+}
+
+@if (exibirDialogoConfirmacao)
+{
+    <MudDialog @bind-IsVisible="exibirDialogoConfirmacao" Options="@(new DialogOptions { NoHeader = true, MaxWidth = MaxWidth.ExtraSmall })">
+        <DialogContent>
+            <MudText Typo="Typo.h6">Confirmar Exclusão</MudText>
+            <MudText>Deseja realmente excluir "@nomePessoaParaExcluir"?</MudText>
+        </DialogContent>
+        <DialogActions>
+            <MudButton OnClick="CancelarExclusao">Cancelar</MudButton>
+            <MudButton Color="Color.Error" OnClick="ExcluirPessoaConfirmado">Excluir</MudButton>
+        </DialogActions>
+    </MudDialog>
+}

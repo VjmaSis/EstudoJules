@@ -1,0 +1,149 @@
+@page "/pessoas/nova"
+@page "/pessoas/editar/{Id:guid}"
+
+@inject EstudoJules.Web.Services.IPessoaApiService PessoaApiService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+@using EstudoJules.Application.Interfaces // Para CriarPessoaDto, AtualizarPessoaDto, PessoaDto
+@using System.ComponentModel.DataAnnotations // Para os atributos de validação
+
+<MudText Typo="Typo.h4" GutterBottom="true">@(IsEditMode ? "Editar Pessoa" : "Nova Pessoa")</MudText>
+
+<EditForm Model="@Model" OnValidSubmit="HandleValidSubmit">
+    <DataAnnotationsValidator />
+    <MudGrid>
+        <MudItem xs="12" sm="6">
+            <MudTextField Label="Nome" @bind-Value="Model.Nome" For="@(() => Model.Nome)" Required="true" RequiredError="Nome é obrigatório." />
+        </MudItem>
+        <MudItem xs="12" sm="6">
+            <MudDatePicker Label="Data de Nascimento" @bind-Date="Model.DataNascimento" For="@(() => Model.DataNascimento)" Required="true" RequiredError="Data de Nascimento é obrigatória." />
+        </MudItem>
+        <MudItem xs="12" sm="6">
+            <MudTextField Label="Email" @bind-Value="Model.Email" For="@(() => Model.Email)" InputType="InputType.Email" Required="true" RequiredError="Email é obrigatório." />
+        </MudItem>
+        <MudItem xs="12" sm="6">
+            <MudTextField Label="CPF" @bind-Value="Model.Cpf" For="@(() => Model.Cpf)" Required="true" RequiredError="CPF é obrigatório." HelperText="Formato: 000.000.000-00"/>
+        </MudItem>
+    </MudGrid>
+    <MudCardActions Class="mt-4">
+        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mr-2">@(IsEditMode ? "Salvar Alterações" : "Cadastrar")</MudButton>
+        <MudButton Variant="Variant.Outlined" OnClick="@(() => NavigationManager.NavigateTo("/pessoas"))">Cancelar</MudButton>
+    </MudCardActions>
+</EditForm>
+
+@code {
+    [Parameter]
+    public Guid? Id { get; set; }
+
+    private PessoaFormModel Model { get; set; } = new PessoaFormModel();
+    private bool IsEditMode => Id.HasValue;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsEditMode)
+        {
+            try
+            {
+                var pessoaDto = await PessoaApiService.ObterPorIdAsync(Id.Value);
+                if (pessoaDto != null)
+                {
+                    Model = new PessoaFormModel
+                    {
+                        Nome = pessoaDto.Nome,
+                        DataNascimento = pessoaDto.DataNascimento,
+                        Email = pessoaDto.Email,
+                        Cpf = pessoaDto.Cpf
+                    };
+                }
+                else
+                {
+                    Snackbar.Add($"Pessoa com ID {Id} não encontrada.", Severity.Error);
+                    NavigationManager.NavigateTo("/pessoas");
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Erro ao carregar dados da pessoa: {ex.Message}", Severity.Error);
+                NavigationManager.NavigateTo("/pessoas");
+            }
+        }
+        else
+        {
+            Model = new PessoaFormModel { DataNascimento = DateTime.Today }; // Valor padrão para Data de Nascimento
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        PessoaDto? resultado = null;
+        bool erro = false;
+
+        try
+        {
+            if (IsEditMode)
+            {
+                var updateDto = new AtualizarPessoaDto
+                {
+                    Nome = Model.Nome,
+                    DataNascimento = Model.DataNascimento.Value,
+                    Email = Model.Email,
+                    Cpf = Model.Cpf
+                };
+                resultado = await PessoaApiService.AtualizarAsync(Id.Value, updateDto);
+            }
+            else
+            {
+                var createDto = new CriarPessoaDto
+                {
+                    Nome = Model.Nome,
+                    DataNascimento = Model.DataNascimento.Value,
+                    Email = Model.Email,
+                    Cpf = Model.Cpf
+                };
+                resultado = await PessoaApiService.AdicionarAsync(createDto);
+            }
+
+            if (resultado != null)
+            {
+                Snackbar.Add($"Pessoa {(IsEditMode ? "atualizada" : "cadastrada")} com sucesso!", Severity.Success);
+                NavigationManager.NavigateTo("/pessoas");
+            }
+            else
+            {
+                erro = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro inesperado: {ex.Message}", Severity.Error);
+            erro = true;
+        }
+
+        if (erro)
+        {
+            Snackbar.Add($"Erro ao {(IsEditMode ? "atualizar" : "cadastrar")} pessoa. Verifique os dados ou tente novamente.", Severity.Error);
+        }
+    }
+
+    // Classe interna para o modelo do formulário com validações
+    public class PessoaFormModel
+    {
+        [Required(ErrorMessage = "Nome é obrigatório.")]
+        [StringLength(100, ErrorMessage = "Nome deve ter no máximo 100 caracteres.")]
+        public string Nome { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Data de Nascimento é obrigatória.")]
+        [DataType(DataType.Date)]
+        public DateTime? DataNascimento { get; set; } // Nullable para permitir campo vazio antes da seleção
+
+        [Required(ErrorMessage = "Email é obrigatório.")]
+        [EmailAddress(ErrorMessage = "Formato de email inválido.")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "CPF é obrigatório.")]
+        // Adicionar uma validação de Regex para CPF seria bom aqui, ou usar um componente customizado.
+        // Ex: [RegularExpression(@"^\d{3}\.\d{3}\.\d{3}-\d{2}$", ErrorMessage = "Formato de CPF inválido. Use XXX.XXX.XXX-XX")]
+        public string Cpf { get; set; } = string.Empty;
+    }
+}
